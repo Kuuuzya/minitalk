@@ -1,66 +1,82 @@
-#include "minitalk.h"
-#include <stdio.h>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   client.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/06/16 15:13:31 by skuznets          #+#    #+#             */
+/*   Updated: 2024/06/16 17:19:06 by skuznets         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-volatile sig_atomic_t g_ack = 0;
+# include <signal.h>
+# include <unistd.h>
+# include <stdlib.h>
+# include "libft/libft.h"
 
-void ack_handler(int sig)
+static int	g_ack;
+
+void	ack_handler(int sig)
 {
-    (void)sig;
-    g_ack = 1;
+	(void)sig;
+	g_ack = 1;
 }
 
-void send_byte(pid_t server_pid, unsigned char byte)
+static void	send_string(char *message, size_t len, const int pid)
 {
-    for (int i = 0; i < 8; i++)
-    {
-        g_ack = 0;
-        if (byte & (1 << i))
-            kill(server_pid, SIGUSR1);
-        else
-            kill(server_pid, SIGUSR2);
+	int		bit;
+	int		signal;
+	size_t	i;
+	size_t	j;
 
-        // Ждем подтверждения от сервера
-        int attempts = 0;
-        while (!g_ack)
-        {
-            usleep(100); // Небольшая задержка
-            attempts++;
-            if (attempts > 10000) // Ограничение на количество попыток
-            {
-                fprintf(stderr, "Error: Server not responding\n");
-                exit(1);
-            }
-        }
-    }
+	i = 0;
+	while (i < len)
+	{
+		j = 0;
+		while (j < 8)
+		{
+			bit = message[i] >> j & 1;
+			g_ack = 0;
+			if (bit)
+				signal = SIGUSR1;
+			else
+				signal = SIGUSR2;
+			if (kill(pid, signal) != 0)
+				exit(1);
+			while (!g_ack)
+				;
+			j++;
+		}
+		i++;
+	}
 }
 
-void send_string(pid_t server_pid, const char *str)
+int	main(int argc, char **argv)
 {
-    size_t len = ft_strlen(str);
-    for (size_t i = 0; i < len; i++)
-    {
-        send_byte(server_pid, (unsigned char)str[i]);
-        printf("Sent byte: %02x\n", (unsigned char)str[i]);
-    }
-    // Отправляем символ конца строки
-    send_byte(server_pid, '\0');
-}
+	char				*message;
+	pid_t				server_pid;
+	struct sigaction	sigact;
 
-int main(int argc, char **argv)
-{
-    if (argc != 3)
-    {
-        write(1, "Usage: ./client <server_pid> <message>\n", 39);
-        exit(1);
-    }
-
-    pid_t server_pid = atoi(argv[1]);
-    char *message = argv[2];
-
-    // Устанавливаем обработчик подтверждений от сервера
-    signal(SIGUSR1, ack_handler);
-
-    send_string(server_pid, message);
-
-    return 0;
+	while (sigemptyset(&sigact.sa_mask) != 0)
+		;
+	while (sigaction(SIGUSR1, &sigact, NULL))
+		;
+	if (argc != 3)
+	{
+		ft_printf("%s", "Usage: ./client <server_pid> <message>\n");
+		exit(1);
+	}
+	else
+	{
+		server_pid = ft_atoi(argv[1]);
+		message = malloc(ft_strlen(argv[2]) + 1);
+		if (!message)
+			exit(1);
+		ft_strlcpy(message, argv[2], ft_strlen(argv[2]) + 1);
+		signal(SIGUSR1, ack_handler);
+		send_string(message, ft_strlen(message) + 1, server_pid);
+		free(message);
+	}
+	return (0);
 }

@@ -1,64 +1,60 @@
-#include "minitalk.h"
-#include <stdio.h>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/06/16 15:02:47 by skuznets          #+#    #+#             */
+/*   Updated: 2024/06/16 17:18:12 by skuznets         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-void handle_signal(int sig, siginfo_t *info, void *context)
+# include <signal.h>
+# include <unistd.h>
+# include <stdlib.h>
+# include "libft/libft.h"
+
+void	handle_signal(int sig, siginfo_t *info, void *context)
 {
-    static int client_pid = 0;
-    static char c = 0;
-    static int bits = 0;
+	static int	client_pid;
+	static char	c;
+	static int	bits;
 
-    (void)context; // Не используется
-
-    // Обновляем PID клиента, если он не равен нулю
-    if (info->si_pid != 0)
-        client_pid = info->si_pid;
-
-    if (sig == SIGUSR1)
-        c |= (1 << bits);
-    else if (sig == SIGUSR2)
-        c &= ~(1 << bits);
-    bits++;
-    
-    if (bits == 8)
-    {
-        if (c == '\0')
-        {
-            write(1, "\n", 1); // Конец строки
-        }
-        else
-        {
-            write(1, &c, 1);
-        }
-        bits = 0;
-        c = 0;
-    }
-
-    // Отправляем сигнал подтверждения клиенту
-    if (client_pid != 0)
-    {
-        if (kill(client_pid, SIGUSR1) == -1)
-        {
-            perror("Failed to send acknowledgment");
-            exit(1);
-        }
-    }
+	(void)context;
+	if (info->si_pid != 0)
+		client_pid = info->si_pid;
+	if (sig == SIGUSR1)
+		c |= (1 << bits);
+	else if (sig == SIGUSR2)
+		c &= ~(1 << bits);
+	bits++;
+	if (bits == 8)
+	{
+		if (c == '\0') // check for end of transmission
+			write(1, "\n", 1); // output a newline
+		else
+			write(1, &c, 1);
+		bits = 0;
+		c = 0;
+	}
+	if (client_pid != 0)
+		if (kill(client_pid, SIGUSR1) == -1)
+			exit(1);
 }
 
-int main(void)
+int	main(void)
 {
-    struct sigaction sa;
+	struct sigaction	sigact;
 
-    // Выводим PID сервера
-    ft_printf("Server PID: %d\n", getpid());
-    
-    sa.sa_sigaction = handle_signal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO;
-
-    sigaction(SIGUSR1, &sa, NULL);
-    sigaction(SIGUSR2, &sa, NULL);
-
-    while (1)
-        pause();
-    return 0;
+	ft_printf("Server PID: %d\n", getpid());
+	sigact.sa_sigaction = handle_signal;
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_SIGINFO;
+	sigaction(SIGUSR1, &sigact, NULL);
+	sigaction(SIGUSR2, &sigact, NULL);
+	while (1)
+		pause();
+	system("leaks server");
+	return (0);
 }

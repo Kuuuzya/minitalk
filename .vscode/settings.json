@@ -1,8 +1,9 @@
 {
   "files.associations": {
-    "stdarg.h": "c",
-    "libft.h": "c"
-  },
+	"stdarg.h": "c",
+	"libft.h": "c",
+	"unistd.h": "c"
+},
   "C_Cpp_Runner.cCompilerPath": "clang",
   "C_Cpp_Runner.cppCompilerPath": "clang++",
   "C_Cpp_Runner.debuggerPath": "lldb",

@@ -1,151 +1,66 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   client.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/06/15 21:01:04 by skuznets          #+#    #+#             */
-/*   Updated: 2024/06/15 21:11:06 by skuznets         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-// #include "minitalk.h"
-
-// void send_signal(pid_t pid, int sig)
-// {
-// 	if (kill(pid, sig) == -1) {
-// 		ft_printf("Error sending signal\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-// }
-
-// void handle_ack(int sig, siginfo_t *info, void *context)
-// {
-// 	(void)sig;
-// 	(void)info;
-// 	(void)context;
-// 	int *acknowledged = (int *)context;
-// 	*acknowledged = 1;
-// }
-
-// void send_message(pid_t pid, char *message)
-// {
-// 	struct sigaction sa_ack;
-// 	int i;
-// 	int acknowledged = 0;
-
-// 	sa_ack.sa_sigaction = handle_ack;
-// 	sa_ack.sa_flags = 0;
-// 	sigemptyset(&sa_ack.sa_mask);
-
-// 	if (sigaction(SIGUSR1, &sa_ack, NULL) == -1)
-// 	{
-// 		ft_printf("Error setting signal handler for acknowledgment\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-// 	while (*message)
-// 	{
-// 		i = 0;
-// 		while (i < 8)
-// 		{
-// 			acknowledged = 0;
-// 			if (*message & (1 << (7 - i))) 
-// 				send_signal(pid, SIGUSR2);
-// 			else
-// 				send_signal(pid, SIGUSR1);
-// 			while (!acknowledged)
-// 				pause();  // Ожидаем подтверждение от сервера
-// 		i++;
-// 		}
-// 		message++;
-// 	}
-// 	i = 0;
-// 	while (i < 8) {
-// 		acknowledged = 0;
-// 		send_signal(pid, SIGUSR1);
-// 		while (!acknowledged)
-// 			pause();  // Ожидаем подтверждение от сервера
-// 		i++;
-// 	}
-// }
-
-// int main(int ac, char *av[])
-// {
-// 	if (ac != 3) {
-// 		ft_printf("Usage: %s <PID> <message>\n", av[0]);
-// 		return (1);
-// 	}
-// 	pid_t pid = ft_atoi(av[1]);
-// 	send_message(pid, av[2]);
-// 	return (0);
-// }
-
-
 #include "minitalk.h"
+#include <stdio.h>
 
-void send_signal(pid_t pid, int sig)
-{
-    if (kill(pid, sig) == -1) {
-        ft_printf("Error sending signal\n");
-        exit(EXIT_FAILURE);
-    }
-}
+volatile sig_atomic_t g_ack = 0;
 
-void handle_ack(int sig, siginfo_t *info, void *context)
+void ack_handler(int sig)
 {
     (void)sig;
-    (void)info;
-    int *acknowledged = (int *)context;
-    *acknowledged = 1;
+    g_ack = 1;
 }
 
-void send_message(pid_t pid, char *message)
+void send_byte(pid_t server_pid, unsigned char byte)
 {
-    struct sigaction sa_ack;
-    int acknowledged = 0;  // Локальная переменная для хранения состояния подтверждения
+    for (int i = 0; i < 8; i++)
+    {
+        g_ack = 0;
+        if (byte & (1 << i))
+            kill(server_pid, SIGUSR1);
+        else
+            kill(server_pid, SIGUSR2);
 
-    sa_ack.sa_sigaction = handle_ack;
-    sa_ack.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigemptyset(&sa_ack.sa_mask);
-
-    if (sigaction(SIGUSR1, &sa_ack, (void *)&acknowledged) == -1) {
-        ft_printf("Error setting signal handler for acknowledgment\n");
-        exit(EXIT_FAILURE);
-    }
-
-    while (*message) {
-        int i = 0;
-        while (i < 8) {
-            acknowledged = 0;
-            if (*message & (1 << (7 - i))) {
-                send_signal(pid, SIGUSR2);
-            } else {
-                send_signal(pid, SIGUSR1);
+        // Ждем подтверждения от сервера
+        int attempts = 0;
+        while (!g_ack)
+        {
+            usleep(100); // Небольшая задержка
+            attempts++;
+            if (attempts > 10000) // Ограничение на количество попыток
+            {
+                fprintf(stderr, "Error: Server not responding\n");
+                exit(1);
             }
-            while (!acknowledged)
-                pause();  // Ожидаем подтверждение от сервера
-            i++;
         }
-        message++;
-    }
-    int i = 0;
-    while (i < 8) {
-        acknowledged = 0;
-        send_signal(pid, SIGUSR1);
-        while (!acknowledged)
-            pause();  // Ожидаем подтверждение от сервера
-        i++;
     }
 }
 
-int main(int ac, char *av[])
+void send_string(pid_t server_pid, const char *str)
 {
-    if (ac != 3) {
-        ft_printf("Usage: %s <PID> <message>\n", av[0]);
-        return 1;
+    size_t len = ft_strlen(str);
+    for (size_t i = 0; i < len; i++)
+    {
+        send_byte(server_pid, (unsigned char)str[i]);
+        printf("Sent byte: %02x\n", (unsigned char)str[i]);
     }
-    pid_t pid = ft_atoi(av[1]);
-    send_message(pid, av[2]);
+    // Отправляем символ конца строки
+    send_byte(server_pid, '\0');
+}
+
+int main(int argc, char **argv)
+{
+    if (argc != 3)
+    {
+        write(1, "Usage: ./client <server_pid> <message>\n", 39);
+        exit(1);
+    }
+
+    pid_t server_pid = atoi(argv[1]);
+    char *message = argv[2];
+
+    // Устанавливаем обработчик подтверждений от сервера
+    signal(SIGUSR1, ack_handler);
+
+    send_string(server_pid, message);
+
     return 0;
 }

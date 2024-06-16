@@ -1,116 +1,64 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   server.c                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2024/06/15 20:50:25 by skuznets          #+#    #+#             */
-/*   Updated: 2024/06/15 21:11:20 by skuznets         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
-// #include "minitalk.h"
-
-// t_server_state g_state = {0, 0, 0};
-
-// void	handle_signal(int sig, siginfo_t *info, void *context)
-// {
-// 	(void)context;
-// 	if (info->si_pid != 0)
-// 		g_state.client_pid = info->si_pid;
-// 	if (sig == SIGUSR2)
-// 		g_state.current_char |= 1 << (7 - g_state.bits_received);
-// 	g_state.bits_received++;
-// 	if (g_state.bits_received == 8)
-// 	{
-// 		if (g_state.current_char == 0)
-// 			write(1, "\n", 1);
-// 		else
-// 			write(1, &g_state.current_char, 1);
-// 		g_state.bits_received = 0;
-// 		g_state.current_char = 0;
-// 	}
-// 	kill(g_state.client_pid, SIGUSR1);
-// }
-
-// int	main(void)
-// {
-// 	struct sigaction	sa;
-// 	pid_t				pid;
-
-// 	pid = getpid();
-// 	ft_printf("Server PID: %d\n", pid);
-// 	sa.sa_sigaction = handle_signal;
-// 	sa.sa_flags = SA_SIGINFO;
-// 	if (sigaction(SIGUSR1, &sa, NULL) == -1)
-// 	{
-// 		ft_printf("Error setting signal handler for SIGUSR1\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-// 	if (sigaction(SIGUSR2, &sa, NULL) == -1)
-// 	{
-// 		ft_printf("Error setting signal handler for SIGUSR2\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-// 	while (1)
-// 	{
-// 		pause();
-// 	}
-// 	return (0);
-// }
-
-
 #include "minitalk.h"
-
-t_server_state g_state = {0, 0, 0};  // Инициализация глобальной переменной
+#include <stdio.h>
 
 void handle_signal(int sig, siginfo_t *info, void *context)
 {
-    (void)context;
+    static int client_pid = 0;
+    static char c = 0;
+    static int bits = 0;
+
+    (void)context; // Не используется
+
+    // Обновляем PID клиента, если он не равен нулю
     if (info->si_pid != 0)
-        g_state.client_pid = info->si_pid;
+        client_pid = info->si_pid;
 
-    if (sig == SIGUSR2)
-        g_state.current_char |= 1 << (7 - g_state.bits_received);
-
-    g_state.bits_received++;
-
-    if (g_state.bits_received == 8) {
-        if (g_state.current_char == 0) {
-            write(1, "\n", 1);
-        } else {
-            write(1, &g_state.current_char, 1);
+    if (sig == SIGUSR1)
+        c |= (1 << bits);
+    else if (sig == SIGUSR2)
+        c &= ~(1 << bits);
+    bits++;
+    
+    if (bits == 8)
+    {
+        if (c == '\0')
+        {
+            write(1, "\n", 1); // Конец строки
         }
-        g_state.bits_received = 0;
-        g_state.current_char = 0;
+        else
+        {
+            write(1, &c, 1);
+        }
+        bits = 0;
+        c = 0;
     }
 
-    kill(g_state.client_pid, SIGUSR1);  // Отправляем подтверждение клиенту
+    // Отправляем сигнал подтверждения клиенту
+    if (client_pid != 0)
+    {
+        if (kill(client_pid, SIGUSR1) == -1)
+        {
+            perror("Failed to send acknowledgment");
+            exit(1);
+        }
+    }
 }
 
 int main(void)
 {
     struct sigaction sa;
-    pid_t pid = getpid();
 
-    ft_printf("Server PID: %d\n", pid);
-
+    // Выводим PID сервера
+    ft_printf("Server PID: %d\n", getpid());
+    
     sa.sa_sigaction = handle_signal;
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_SIGINFO;
 
-    if (sigaction(SIGUSR1, &sa, NULL) == -1) {
-        ft_printf("Error setting signal handler for SIGUSR1\n");
-        exit(EXIT_FAILURE);
-    }
-    if (sigaction(SIGUSR2, &sa, NULL) == -1) {
-        ft_printf("Error setting signal handler for SIGUSR2\n");
-        exit(EXIT_FAILURE);
-    }
+    sigaction(SIGUSR1, &sa, NULL);
+    sigaction(SIGUSR2, &sa, NULL);
 
-    while (1) {
+    while (1)
         pause();
-    }
-
     return 0;
 }

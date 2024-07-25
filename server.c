@@ -6,14 +6,14 @@
 /*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/16 15:02:47 by skuznets          #+#    #+#             */
-/*   Updated: 2024/06/16 17:18:12 by skuznets         ###   ########.fr       */
+/*   Updated: 2024/07/25 16:58:13 by skuznets         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include <signal.h>
-# include <unistd.h>
-# include <stdlib.h>
-# include "libft/libft.h"
+#include <signal.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include "libft/libft.h"
 
 void	handle_signal(int sig, siginfo_t *info, void *context)
 {
@@ -31,8 +31,8 @@ void	handle_signal(int sig, siginfo_t *info, void *context)
 	bits++;
 	if (bits == 8)
 	{
-		if (c == '\0') // check for end of transmission
-			write(1, "\n", 1); // output a newline
+		if (c == '\0')
+			write(1, "\n", 1);
 		else
 			write(1, &c, 1);
 		bits = 0;

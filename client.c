@@ -6,14 +6,14 @@
 /*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/16 15:13:31 by skuznets          #+#    #+#             */
-/*   Updated: 2024/06/16 17:19:06 by skuznets         ###   ########.fr       */
+/*   Updated: 2024/07/25 16:57:16 by skuznets         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-# include <signal.h>
-# include <unistd.h>
-# include <stdlib.h>
-# include "libft/libft.h"
+#include <signal.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include "libft/libft.h"
 
 static int	g_ack;
 

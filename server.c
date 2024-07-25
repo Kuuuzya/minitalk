@@ -6,7 +6,7 @@
 /*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/16 15:02:47 by skuznets          #+#    #+#             */
-/*   Updated: 2024/07/25 16:58:13 by skuznets         ###   ########.fr       */
+/*   Updated: 2024/07/25 17:09:28 by skuznets         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,9 @@ int	main(void)
 {
 	struct sigaction	sigact;
 
-	ft_printf("Server PID: %d\n", getpid());
+	ft_putstr_fd("Server PID: ", 1);
+	ft_putnbr_fd(getpid(), 1);
+	ft_putstr_fd("\n", 1);
 	sigact.sa_sigaction = handle_signal;
 	sigemptyset(&sigact.sa_mask);
 	sigact.sa_flags = SA_SIGINFO;

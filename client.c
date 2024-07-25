@@ -6,7 +6,7 @@
 /*   By: skuznets <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/16 15:13:31 by skuznets          #+#    #+#             */
-/*   Updated: 2024/07/25 16:57:16 by skuznets         ###   ########.fr       */
+/*   Updated: 2024/07/25 17:07:19 by skuznets         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ int	main(int argc, char **argv)
 		;
 	if (argc != 3)
 	{
-		ft_printf("%s", "Usage: ./client <server_pid> <message>\n");
+		ft_putstr_fd("Usage: ./client <server_pid> <message>\n", 1);
 		exit(1);
 	}
 	else
